@@ -204,37 +204,42 @@ HTML_PAGE = """
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 20px;
+            text-align: center;
         }
         .price-input-section .section-title {
             color: #f0b90b;
-            font-size: 1.2em;
-            margin-bottom: 15px;
+            font-size: 1.3em;
+            margin-bottom: 20px;
         }
-        .price-input-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+        .price-input-section .input-field {
+            max-width: 300px;
+            margin: 0 auto;
         }
-        .price-input-group .input-field {
-            display: flex;
-            flex-direction: column;
-        }
-        .price-input-group .input-field label {
+        .price-input-section .input-field label {
+            display: block;
             color: #848e9c;
-            font-size: 0.9em;
-            margin-bottom: 8px;
+            font-size: 1em;
+            margin-bottom: 10px;
         }
-        .price-input-group .input-field input {
-            padding: 12px;
+        .price-input-section .input-field input {
+            width: 100%;
+            padding: 15px;
             background: #1e222a;
-            border: 2px solid #2b2f36;
+            border: 2px solid #f0b90b;
             border-radius: 8px;
             color: #eaecef;
-            font-size: 1em;
+            font-size: 1.2em;
+            text-align: center;
+            font-weight: bold;
         }
-        .price-input-group .input-field input:focus {
+        .price-input-section .input-field input:focus {
             outline: none;
-            border-color: #f0b90b;
+            border-color: #0ecb81;
+        }
+        .price-input-section .hint {
+            color: #848e9c;
+            margin-top: 15px;
+            font-size: 0.9em;
         }
 
         .btn { 
@@ -563,45 +568,22 @@ HTML_PAGE = """
         <img id="preview">
     </div>
 
-    <!-- حقل إدخال السعر اليدوي -->
+    <!-- حقل إدخال السعر الحالي فقط -->
     <div class="price-input-section">
         <div class="section-title">
-            <span data-ar-inline>💰 أدخل بيانات السعر الحقيقية (من TradingView)</span>
-            <span data-en-inline>💰 Enter Real Price Data (from TradingView)</span>
+            <span data-ar-inline>💰 أدخل السعر الحالي</span>
+            <span data-en-inline>💰 Enter Current Price</span>
         </div>
-        <div class="price-input-group">
-            <div class="input-field">
-                <label>
-                    <span data-ar-inline>سعر الإغلاق (Close) *</span>
-                    <span data-en-inline>Close Price *</span>
-                </label>
-                <input type="number" id="currentPrice" placeholder="64005" step="0.01">
-            </div>
-            <div class="input-field">
-                <label>
-                    <span data-ar-inline>سعر الافتتاح (Open)</span>
-                    <span data-en-inline>Open Price</span>
-                </label>
-                <input type="number" id="openPrice" placeholder="64006" step="0.01">
-            </div>
-            <div class="input-field">
-                <label>
-                    <span data-ar-inline>أعلى سعر (High)</span>
-                    <span data-en-inline>High Price</span>
-                </label>
-                <input type="number" id="highPrice" placeholder="64019" step="0.01">
-            </div>
-            <div class="input-field">
-                <label>
-                    <span data-ar-inline>أدنى سعر (Low)</span>
-                    <span data-en-inline>Low Price</span>
-                </label>
-                <input type="number" id="lowPrice" placeholder="64002" step="0.01">
-            </div>
+        <div class="input-field">
+            <label>
+                <span data-ar-inline>السعر الحالي (مثال: 63997)</span>
+                <span data-en-inline>Current Price (e.g., 63997)</span>
+            </label>
+            <input type="number" id="currentPrice" placeholder="63997" step="0.01">
         </div>
-        <p style="color: #848e9c; margin-top: 15px; font-size: 0.9em;">
-            <span data-ar-inline>💡 املأ هذه البيانات من أعلى الشارت في TradingView (O, H, L, C)</span>
-            <span data-en-inline>💡 Fill these from the top of the TradingView chart (O, H, L, C)</span>
+        <p class="hint">
+            <span data-ar-inline>💡 اكتب السعر الحالي من TradingView (مثلاً: 63997)</span>
+            <span data-en-inline>💡 Type current price from TradingView (e.g., 63997)</span>
         </p>
     </div>
 
@@ -746,14 +728,11 @@ HTML_PAGE = """
             return; 
         }
 
-        // جمع بيانات السعر اليدوية
+        // جمع السعر الحالي فقط
         const currentPrice = document.getElementById('currentPrice').value;
-        const openPrice = document.getElementById('openPrice').value;
-        const highPrice = document.getElementById('highPrice').value;
-        const lowPrice = document.getElementById('lowPrice').value;
 
         if (!currentPrice) {
-            alert(currentLang === 'ar' ? "⚠️ رجاءً أدخل سعر الإغلاق (Close)!" : "⚠️ Please enter Close price!");
+            alert(currentLang === 'ar' ? "⚠️ رجاءً أدخل السعر الحالي!" : "⚠️ Please enter current price!");
             return;
         }
 
@@ -770,10 +749,7 @@ HTML_PAGE = """
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     image: base64Image,
-                    current_price: parseFloat(currentPrice),
-                    open_price: openPrice ? parseFloat(openPrice) : null,
-                    high_price: highPrice ? parseFloat(highPrice) : null,
-                    low_price: lowPrice ? parseFloat(lowPrice) : null
+                    current_price: parseFloat(currentPrice)
                 })
             });
 
@@ -1193,14 +1169,11 @@ def predict():
         if not data or 'image' not in data:
             return jsonify({"error": "No image uploaded!"}), 400
 
-        # جمع بيانات السعر اليدوية
+        # جمع السعر الحالي فقط
         current_price = data.get('current_price')
-        open_price = data.get('open_price')
-        high_price = data.get('high_price')
-        low_price = data.get('low_price')
 
         if not current_price:
-            return jsonify({"error": "Please enter current price (Close)!"}), 400
+            return jsonify({"error": "Please enter current price!"}), 400
 
         image_bytes = base64.b64decode(data['image'])
         img = Image.open(BytesIO(image_bytes))
@@ -1238,11 +1211,7 @@ def predict():
 
         1. CURRENT TIME: The current time is {current_time}. All predictions must start from this exact time.
 
-        2. CURRENT PRICE: The user has provided the EXACT current price from TradingView:
-           - Close (C): {current_price}
-           - Open (O): {open_price if open_price else 'Not provided'}
-           - High (H): {high_price if high_price else 'Not provided'}
-           - Low (L): {low_price if low_price else 'Not provided'}
+        2. CURRENT PRICE: The user has provided the EXACT current price: {current_price}
 
         3. YOU MUST USE THIS EXACT PRICE for all calculations:
            - Entry price = {current_price}
