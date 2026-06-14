@@ -198,6 +198,45 @@ HTML_PAGE = """
             background: #1e222a;
         }
 
+        .price-input-section {
+            background: #181a20;
+            border: 1px solid #2b2f36;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .price-input-section .section-title {
+            color: #f0b90b;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        .price-input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .price-input-group .input-field {
+            display: flex;
+            flex-direction: column;
+        }
+        .price-input-group .input-field label {
+            color: #848e9c;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .price-input-group .input-field input {
+            padding: 12px;
+            background: #1e222a;
+            border: 2px solid #2b2f36;
+            border-radius: 8px;
+            color: #eaecef;
+            font-size: 1em;
+        }
+        .price-input-group .input-field input:focus {
+            outline: none;
+            border-color: #f0b90b;
+        }
+
         .btn { 
             background: #f0b90b; 
             color: #000; 
@@ -524,6 +563,48 @@ HTML_PAGE = """
         <img id="preview">
     </div>
 
+    <!-- حقل إدخال السعر اليدوي -->
+    <div class="price-input-section">
+        <div class="section-title">
+            <span data-ar-inline>💰 أدخل بيانات السعر الحقيقية (من TradingView)</span>
+            <span data-en-inline>💰 Enter Real Price Data (from TradingView)</span>
+        </div>
+        <div class="price-input-group">
+            <div class="input-field">
+                <label>
+                    <span data-ar-inline>سعر الإغلاق (Close) *</span>
+                    <span data-en-inline>Close Price *</span>
+                </label>
+                <input type="number" id="currentPrice" placeholder="64005" step="0.01">
+            </div>
+            <div class="input-field">
+                <label>
+                    <span data-ar-inline>سعر الافتتاح (Open)</span>
+                    <span data-en-inline>Open Price</span>
+                </label>
+                <input type="number" id="openPrice" placeholder="64006" step="0.01">
+            </div>
+            <div class="input-field">
+                <label>
+                    <span data-ar-inline>أعلى سعر (High)</span>
+                    <span data-en-inline>High Price</span>
+                </label>
+                <input type="number" id="highPrice" placeholder="64019" step="0.01">
+            </div>
+            <div class="input-field">
+                <label>
+                    <span data-ar-inline>أدنى سعر (Low)</span>
+                    <span data-en-inline>Low Price</span>
+                </label>
+                <input type="number" id="lowPrice" placeholder="64002" step="0.01">
+            </div>
+        </div>
+        <p style="color: #848e9c; margin-top: 15px; font-size: 0.9em;">
+            <span data-ar-inline>💡 املأ هذه البيانات من أعلى الشارت في TradingView (O, H, L, C)</span>
+            <span data-en-inline>💡 Fill these from the top of the TradingView chart (O, H, L, C)</span>
+        </p>
+    </div>
+
     <button class="btn" id="analyzeBtn" onclick="analyzeChart()">
         <span data-ar-inline>🔮 ابدأ التحليل الاحترافي الشامل</span>
         <span data-en-inline>🔮 Start Comprehensive Professional Analysis</span>
@@ -665,6 +746,17 @@ HTML_PAGE = """
             return; 
         }
 
+        // جمع بيانات السعر اليدوية
+        const currentPrice = document.getElementById('currentPrice').value;
+        const openPrice = document.getElementById('openPrice').value;
+        const highPrice = document.getElementById('highPrice').value;
+        const lowPrice = document.getElementById('lowPrice').value;
+
+        if (!currentPrice) {
+            alert(currentLang === 'ar' ? "⚠️ رجاءً أدخل سعر الإغلاق (Close)!" : "⚠️ Please enter Close price!");
+            return;
+        }
+
         const btn = document.getElementById('analyzeBtn');
         btn.disabled = true;
 
@@ -676,7 +768,13 @@ HTML_PAGE = """
             const response = await fetch('/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64Image })
+                body: JSON.stringify({ 
+                    image: base64Image,
+                    current_price: parseFloat(currentPrice),
+                    open_price: openPrice ? parseFloat(openPrice) : null,
+                    high_price: highPrice ? parseFloat(highPrice) : null,
+                    low_price: lowPrice ? parseFloat(lowPrice) : null
+                })
             });
 
             const data = await response.json();
@@ -1048,20 +1146,26 @@ def generate_fallback_candles(scenario_type, count, base_price=65000):
         })
     return candles
 
-def generate_fallback_result():
+def generate_fallback_result(current_price=65000):
     now = datetime.now()
     current_time = now.strftime("%H:%M")
+
+    # حساب الأهداف بناءً على السعر الحقيقي
+    stop_loss = current_price * 0.989  # -1.1%
+    target_1 = current_price * 1.011   # +1.1%
+    target_2 = current_price * 1.020   # +2.0%
+    target_3 = current_price * 1.031   # +3.1%
 
     return {
         "signal": {
             "type": "BUY",
             "time": current_time,
             "confidence": 85,
-            "entry_price": "64,500",
-            "stop_loss": "63,800 (-1.1%)",
-            "target_1": "65,200 (+1.1%)",
-            "target_2": "65,800 (+2.0%)",
-            "target_3": "66,500 (+3.1%)",
+            "entry_price": f"{current_price:,.0f}",
+            "stop_loss": f"{stop_loss:,.0f} (-1.1%)",
+            "target_1": f"{target_1:,.0f} (+1.1%)",
+            "target_2": f"{target_2:,.0f} (+2.0%)",
+            "target_3": f"{target_3:,.0f} (+3.1%)",
             "profit_management": "أمن 50% من الربح عند الهدف 1، 30% عند الهدف 2، ودع الباقي يصل للهدف 3 مع نقل وقف الخسارة",
             "profit_management_en": "Secure 50% profit at Target 1, 30% at Target 2, let rest reach Target 3 with trailing stop"
         },
@@ -1074,11 +1178,11 @@ def generate_fallback_result():
             {"label": "Volatility", "label_en": "Volatility", "value": "Medium"}
         ],
         "scenarios": [
-            {"probability": 50, "target": "+5%", "stop_loss": "-2%", "risk_reward": "1:2.5", "candles": generate_fallback_candles(0, 20)},
-            {"probability": 30, "target": "±2%", "stop_loss": "±3%", "risk_reward": "1:1", "candles": generate_fallback_candles(1, 20)},
-            {"probability": 20, "target": "-4%", "stop_loss": "+2%", "risk_reward": "1:2", "candles": generate_fallback_candles(2, 20)}
+            {"probability": 50, "target": "+5%", "stop_loss": "-2%", "risk_reward": "1:2.5", "candles": generate_fallback_candles(0, 20, current_price)},
+            {"probability": 30, "target": "±2%", "stop_loss": "±3%", "risk_reward": "1:1", "candles": generate_fallback_candles(1, 20, current_price)},
+            {"probability": 20, "target": "-4%", "stop_loss": "+2%", "risk_reward": "1:2", "candles": generate_fallback_candles(2, 20, current_price)}
         ],
-        "explanation": "Technical analysis indicates a Bullish Engulfing pattern at strong support with increasing volume. RSI at 58.3 suggests bullish momentum. Historical twins show 87% probability of continuation. Risk management: stop at -2%, target +5%."
+        "explanation": f"Technical analysis indicates a Bullish Engulfing pattern at strong support with increasing volume. Current price {current_price:,.0f}. RSI at 58.3 suggests bullish momentum. Risk management: stop at -1.1%, target +3.1%."
     }
 
 @app.route('/predict', methods=['POST'])
@@ -1088,6 +1192,15 @@ def predict():
         data = request.get_json()
         if not data or 'image' not in data:
             return jsonify({"error": "No image uploaded!"}), 400
+
+        # جمع بيانات السعر اليدوية
+        current_price = data.get('current_price')
+        open_price = data.get('open_price')
+        high_price = data.get('high_price')
+        low_price = data.get('low_price')
+
+        if not current_price:
+            return jsonify({"error": "Please enter current price (Close)!"}), 400
 
         image_bytes = base64.b64decode(data['image'])
         img = Image.open(BytesIO(image_bytes))
@@ -1118,18 +1231,25 @@ def predict():
 
         candle_times = generate_candle_times()
 
-        # Prompt محسّن لقراءة السعر الحقيقي من الصورة
+        # Prompt محسّن مع السعر الحقيقي
         prompt = f"""You are a 60-year veteran trading expert with unparalleled market intuition. Analyze this candlestick chart image with ONE GLANCE and provide INSTANT professional analysis.
 
         CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
 
         1. CURRENT TIME: The current time is {current_time}. All predictions must start from this exact time.
 
-        2. READ CURRENT PRICE FROM IMAGE: Look at the TOP of the chart where it shows the current price data (O, H, L, C values). The current price is the LAST candle's CLOSE price (C value). You MUST use this exact price for all calculations.
+        2. CURRENT PRICE: The user has provided the EXACT current price from TradingView:
+           - Close (C): {current_price}
+           - Open (O): {open_price if open_price else 'Not provided'}
+           - High (H): {high_price if high_price else 'Not provided'}
+           - Low (L): {low_price if low_price else 'Not provided'}
 
-        3. PRICE SCALE: Look at the price scale on the right side of the chart to understand the exact price levels.
+        3. YOU MUST USE THIS EXACT PRICE for all calculations:
+           - Entry price = {current_price}
+           - Stop loss = based on {current_price}
+           - Targets = based on {current_price}
 
-        4. DO NOT estimate or guess prices. Read them directly from the chart image.
+        4. DO NOT estimate or guess prices. Use the provided price exactly.
 
         Return ONLY a JSON object with this structure (no markdown, no extra text):
 
@@ -1138,11 +1258,11 @@ def predict():
             "type": "BUY" or "SELL" or "WAIT",
             "time": "{current_time}",
             "confidence": 85,
-            "entry_price": "EXACT current price from chart C value",
-            "stop_loss": "price (-X%) based on exact current price",
-            "target_1": "price (+X%) based on exact current price",
-            "target_2": "price (+X%) based on exact current price",
-            "target_3": "price (+X%) based on exact current price",
+            "entry_price": "{current_price}",
+            "stop_loss": "price (-X%) based on {current_price}",
+            "target_1": "price (+X%) based on {current_price}",
+            "target_2": "price (+X%) based on {current_price}",
+            "target_3": "price (+X%) based on {current_price}",
             "profit_management": "Arabic text: when to secure profits at each target",
             "profit_management_en": "English text: profit management strategy"
           }},
@@ -1160,7 +1280,7 @@ def predict():
               "target": "+5%",
               "stop_loss": "-2%",
               "risk_reward": "1:2.5",
-              "candles": [{{"open": 65000, "high": 65200, "low": 64800, "close": 65100}}]
+              "candles": [{{"open": {current_price}, "high": {current_price*1.002}, "low": {current_price*0.998}, "close": {current_price*1.001}}}]"
             }},
             {{"probability": 35, "target": "±2%", "stop_loss": "±3%", "risk_reward": "1:1", "candles": []}},
             {{"probability": 20, "target": "-4%", "stop_loss": "+2%", "risk_reward": "1:2", "candles": []}}
@@ -1170,11 +1290,11 @@ def predict():
 
         RULES:
         - Signal time MUST be {current_time} (current time)
-        - Entry price MUST be the exact current price from the chart (C value at top)
+        - Entry price MUST be exactly {current_price}
         - Each scenario MUST have exactly 20 candles with open, high, low, close
         - high >= max(open, close), low <= min(open, close)
         - Probabilities sum to 100
-        - Prices match chart scale (read from image, do not estimate)
+        - Prices based on {current_price} (do not use any other price)
         - Expert-level analysis with decades of experience tone
         - No markdown, no code blocks, raw JSON only"""
 
@@ -1209,20 +1329,24 @@ def predict():
             if result_text:
                 result = extract_json_from_text(result_text)
             else:
-                result = generate_fallback_result()
+                result = generate_fallback_result(current_price)
         except:
-            result = generate_fallback_result()
+            result = generate_fallback_result(current_price)
 
         # Validate and fix
         if 'scenarios' not in result or len(result.get('scenarios', [])) != 3:
-            result = generate_fallback_result()
+            result = generate_fallback_result(current_price)
 
         if 'signal' not in result:
-            result['signal'] = generate_fallback_result()['signal']
+            result['signal'] = generate_fallback_result(current_price)['signal']
+
+        # التأكد من استخدام السعر الحقيقي
+        result['signal']['entry_price'] = f"{current_price:,.0f}"
+        result['signal']['time'] = current_time
 
         for i, s in enumerate(result['scenarios']):
             if 'candles' not in s or not isinstance(s.get('candles'), list) or len(s.get('candles', [])) != 20:
-                s['candles'] = generate_fallback_candles(i, 20)
+                s['candles'] = generate_fallback_candles(i, 20, current_price)
             else:
                 for c in s['candles']:
                     c['high'] = max(c.get('high', c['open']), c['open'], c['close'])
