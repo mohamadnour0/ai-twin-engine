@@ -1118,22 +1118,31 @@ def predict():
 
         candle_times = generate_candle_times()
 
+        # Prompt محسّن لقراءة السعر الحقيقي من الصورة
         prompt = f"""You are a 60-year veteran trading expert with unparalleled market intuition. Analyze this candlestick chart image with ONE GLANCE and provide INSTANT professional analysis.
 
-        CRITICAL: Current time is {current_time}. All predictions must start from this exact time, with 15-minute intervals.
+        CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
+
+        1. CURRENT TIME: The current time is {current_time}. All predictions must start from this exact time.
+
+        2. READ CURRENT PRICE FROM IMAGE: Look at the TOP of the chart where it shows the current price data (O, H, L, C values). The current price is the LAST candle's CLOSE price (C value). You MUST use this exact price for all calculations.
+
+        3. PRICE SCALE: Look at the price scale on the right side of the chart to understand the exact price levels.
+
+        4. DO NOT estimate or guess prices. Read them directly from the chart image.
 
         Return ONLY a JSON object with this structure (no markdown, no extra text):
 
         {{
           "signal": {{
             "type": "BUY" or "SELL" or "WAIT",
-            "time": "{current_time} - exact current time",
+            "time": "{current_time}",
             "confidence": 85,
-            "entry_price": "exact price from chart",
-            "stop_loss": "price (-X%)",
-            "target_1": "price (+X%)",
-            "target_2": "price (+X%)",
-            "target_3": "price (+X%)",
+            "entry_price": "EXACT current price from chart C value",
+            "stop_loss": "price (-X%) based on exact current price",
+            "target_1": "price (+X%) based on exact current price",
+            "target_2": "price (+X%) based on exact current price",
+            "target_3": "price (+X%) based on exact current price",
             "profit_management": "Arabic text: when to secure profits at each target",
             "profit_management_en": "English text: profit management strategy"
           }},
@@ -1161,10 +1170,11 @@ def predict():
 
         RULES:
         - Signal time MUST be {current_time} (current time)
+        - Entry price MUST be the exact current price from the chart (C value at top)
         - Each scenario MUST have exactly 20 candles with open, high, low, close
         - high >= max(open, close), low <= min(open, close)
         - Probabilities sum to 100
-        - Prices match chart scale (e.g., BTC ~60,000-70,000)
+        - Prices match chart scale (read from image, do not estimate)
         - Expert-level analysis with decades of experience tone
         - No markdown, no code blocks, raw JSON only"""
 
