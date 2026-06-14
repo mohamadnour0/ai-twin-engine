@@ -17,7 +17,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
+API_KEY = os.environ.get("AQ.Ab8RN6J1beNo4CCBMaCtOoNqkETFIyiDXbBOEBcDY7E9Bqbgtw", "")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "abohsam2010")
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 
