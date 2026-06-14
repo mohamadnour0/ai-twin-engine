@@ -7,8 +7,7 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from functools import wraps
-from google import genai
-from google.genai import types
+import openai
 from PIL import Image
 from dotenv import load_dotenv
 
@@ -17,11 +16,12 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
+API_KEY = os.environ.get("OPENAI_API_KEY", "")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "abohsam2010")
 APP_USERNAME = os.environ.get("APP_USERNAME", "admin")
 
-client = genai.Client(api_key=API_KEY)
+# إعداد OpenAI client
+client = openai.OpenAI(api_key=API_KEY)
 
 SIGNAL_HISTORY = []
 
@@ -1098,18 +1098,21 @@ def predict():
         img.save(img_buffer, format='JPEG')
         img_buffer.seek(0)
 
+        # تحويل الصورة إلى base64 لـ OpenAI
+        img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+
         now = datetime.now()
         hour = now.hour
         current_time = now.strftime("%H:%M")
 
         if 9 <= hour < 16:
-            session = "NY Session (High Liquidity)"
+            session_name = "NY Session (High Liquidity)"
         elif 3 <= hour < 9:
-            session = "London Session (Medium Liquidity)"
+            session_name = "London Session (Medium Liquidity)"
         elif 0 <= hour < 3:
-            session = "Tokyo Session (Low Liquidity)"
+            session_name = "Tokyo Session (Low Liquidity)"
         else:
-            session = "Asia/Pacific Session (Weak Liquidity)"
+            session_name = "Asia/Pacific Session (Weak Liquidity)"
 
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -1166,33 +1169,37 @@ def predict():
         - No markdown, no code blocks, raw JSON only"""
 
         try:
-            response = client.models.generate_content(
-                model='gemini-2.5-flash-lite',
-                contents=[
-                    types.Part(text=prompt),
-                    types.Part(inline_data=types.Blob(data=img_buffer.getvalue(), mime_type='image/jpeg'))
-                ]
+            # استخدام OpenAI GPT-4o للتحليل
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{img_base64}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=4000
             )
-        except:
-            try:
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[
-                        types.Part(text=prompt),
-                        types.Part(inline_data=types.Blob(data=img_buffer.getvalue(), mime_type='image/jpeg'))
-                    ]
-                )
-            except:
-                response = client.models.generate_content(
-                    model='gemini-2.0-flash',
-                    contents=[
-                        types.Part(text=prompt),
-                        types.Part(inline_data=types.Blob(data=img_buffer.getvalue(), mime_type='image/jpeg'))
-                    ]
-                )
+
+            result_text = response.choices[0].message.content
+
+        except Exception as e:
+            print(f"OpenAI API Error: {e}")
+            result_text = None
 
         try:
-            result = extract_json_from_text(response.text)
+            if result_text:
+                result = extract_json_from_text(result_text)
+            else:
+                result = generate_fallback_result()
         except:
             result = generate_fallback_result()
 
@@ -1220,7 +1227,7 @@ def predict():
         result['time_info'] = {
             "time": current_time,
             "day": days[now.weekday()],
-            "session": session
+            "session": session_name
         }
         result['candle_times'] = candle_times
         result['historical_matches'] = generate_historical_matches()
